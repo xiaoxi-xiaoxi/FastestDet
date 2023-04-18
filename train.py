@@ -1,4 +1,5 @@
 import os
+
 import math
 import torch
 import argparse
@@ -14,7 +15,7 @@ from module.loss import DetectorLoss
 from module.detector import Detector
 
 # 指定后端设备CUDA&CPU
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 
 class FastestDet:
     def __init__(self):
@@ -33,14 +34,15 @@ class FastestDet:
         # 初始化模型结构
         if opt.weight is not None:
             print("load weight from:%s"%opt.weight)
-            self.model = Detector(self.cfg.category_num, True).to(device)
+            self.model = Detector(self.cfg.category_num, True).to('cuda')
             self.model.load_state_dict(torch.load(opt.weight))
         else:
-            self.model = Detector(self.cfg.category_num, False).to(device)
+            self.model = Detector(self.cfg.category_num, False).to('cuda')
 
         # # 打印网络各层的张量维度
-        summary(self.model, input_size=(3, self.cfg.input_height, self.cfg.input_width))
+        summary(self.model, input_size=(3, self.cfg.input_height, self.cfg.input_width), device='cuda')
 
+        self.model = self.model.to(device)
         #构建优化器
         print("use SGD optimizer")
         self.optimizer = optim.SGD(params=self.model.parameters(),
@@ -68,7 +70,7 @@ class FastestDet:
                                                           batch_size=self.cfg.batch_size,
                                                           shuffle=False,
                                                           collate_fn=collate_fn,
-                                                          num_workers=4,
+                                                          num_workers=2,
                                                           drop_last=False,
                                                           persistent_workers=True
                                                           )
@@ -77,7 +79,7 @@ class FastestDet:
                                                             batch_size=self.cfg.batch_size,
                                                             shuffle=True,
                                                             collate_fn=collate_fn,
-                                                            num_workers=4,
+                                                            num_workers=2,
                                                             drop_last=True,
                                                             persistent_workers=True
                                                             )
